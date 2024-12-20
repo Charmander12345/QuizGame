@@ -4,8 +4,8 @@ import socket
 import pywinstyles
 import sys
 import os
-from Classes import Datahandler
-from Classes import Extras
+from Classes import Datahandler, Extras
+from Classes.Extras import InputDialog
 from tkinter import filedialog
 import pathlib
 from CTkMessagebox import *
@@ -27,7 +27,8 @@ class Mariechen(ctk.CTk):
             self.datahandler.writeInI(section="Customization",key="style",value="optimised")
         else:
             pywinstyles.apply_style(self,self.style)
-        
+        self.bind("<Control-n>", self.showNameEntry)
+
         self.editor = False
         self.questions = {}
         self.questionsRef:list[Extras.Question] = []
@@ -48,6 +49,7 @@ class Mariechen(ctk.CTk):
 
         self.entryframe = ctk.CTkFrame(self.startupscreen,width=200,height=50)
         self.nameentry = ctk.CTkEntry(self.entryframe,placeholder_text="Name your quiz")
+        self.nameentry.bind("<Return>", self.createQuiz)
         self.confirmname = ctk.CTkButton(self.entryframe,text="Confirm",command=self.createQuiz)
         self.nameentry.pack()
         self.confirmname.pack()
@@ -83,15 +85,17 @@ class Mariechen(ctk.CTk):
             with open(path,"rb"):
                 self.quiz = self.datahandler.getQuiz(path)
 
-    def showNameEntry(self):
+    def showNameEntry(self,event = None):
         if self.ButtonsFrame.winfo_viewable():
             self.ButtonsFrame.pack_forget()
             self.entryframe.pack()
+            self.unbind("<Return>")
         else:
             self.entryframe.pack_forget()
             self.ButtonsFrame.pack()
+            self.unbind("<Return>")
         
-    def createQuiz(self):
+    def createQuiz(self,event = None):
         if self.nameentry.get():
             self.quiz = Extras.Quiz(Name=self.nameentry.get())
             self.SaveQuiz(quiz=self.quiz,defaultfile=self.nameentry.get())
@@ -100,27 +104,30 @@ class Mariechen(ctk.CTk):
             self.QuizEditor.pack(fill="both",expand=True)
             window_position.center_window(self,900,450)
             self.editor = True
+            self.bind_all("<Escape>", self.LeaveEditor)
 
     def addQuestion(self):
         if self.editor:
             Dialog = Extras.InputDialog(title="Question Name",Buttontext="Confirm",PlaceholderInput="Enter a Name")
             self.wait_window(Dialog)
             result = Dialog.get_result()
-            if result not in self.questions:
+            if result is not None and result not in self.questions:
                 if self.editor:
-                    newQuestion = Extras.Question(self.QuizEditor,height=100)
-                    newQuestion.pack(fill="x",expand=True)
+                    new_question = Extras.Question(self.QuizEditor, height=100,Name=result)
+                    new_question.pack(fill="x", expand=True)
                     self.questions[result] = []
-                    self.questionsRef.append(newQuestion)
+                    self.questionsRef.append(new_question)
     
-    def LeaveEditor(self):
+    def LeaveEditor(self,event = None):
         self.editor = False
         self.QuizEditor.pack_forget()
-        self.startupscreen.pack(fill="both",expand=True)
-        window_position.center_window(self,400,200)
-        if self.entryframe.winfo_viewable:
+        self.startupscreen.pack(fill="both", expand=True)
+        window_position.center_window(self, 400, 200)
+        if self.entryframe.winfo_viewable():
             self.entryframe.pack_forget()
             self.ButtonsFrame.pack()
-        
-        for Name,child in self.QuizEditor.children:
-            self.QuizEditor.
+        for widget in self.QuizEditor.winfo_children():
+            if isinstance(widget, Extras.Question):
+                widget.destroy()
+        self.questionsRef.clear()
+        self.unbind_all("<Escape>")
