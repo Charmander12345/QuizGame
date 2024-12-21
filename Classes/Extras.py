@@ -32,23 +32,44 @@ class Quiz():
         self.path = path
 
 class Answer(ctk.CTkFrame):
-    def __init__(self, master, width=200, height=200, corner_radius=None, border_width=None, bg_color="transparent", fg_color=None, border_color=None, background_corner_colors=None, overwrite_preferred_drawing_method=None, Answer: str = "", **kwargs):
+    def __init__(self, master, width=200, height=200, corner_radius=None, border_width=None, bg_color="transparent", fg_color=None, border_color=None, background_corner_colors=None, overwrite_preferred_drawing_method=None, Answer: str = "", is_correct=False, mode: str = "play", **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
         self.Answer = Answer
-        self.Button = ctk.CTkButton(self, text=self.Answer, fg_color="transparent", cursor="hand2")
+        self.is_correct = is_correct
+        self.mode = mode
+        self.Button = ctk.CTkButton(self, text=self.Answer, fg_color="transparent", cursor="hand2", command=self.toggle_correctness)
         self.Button.pack(expand=True)
+        self.update_color()
+
+    def toggle_correctness(self):
+        if self.mode == "edit":  # Check if in editor mode
+            self.is_correct = not self.is_correct
+            self.update_color()
+
+    def update_color(self):
+        if self.is_correct:
+            self.Button.configure(fg_color="green", hover_color="lightgreen")
+        else:
+            self.Button.configure(fg_color="red", hover_color="lightcoral")
+        self.configure(bg_color="transparent")
 
 class Question(ctk.CTkFrame):
-    def __init__(self, master, width=200, height=200, corner_radius=None, border_width=None, bg_color="transparent", fg_color=None, border_color=None, background_corner_colors=None, overwrite_preferred_drawing_method=None, Name: str = "", Answers: list[str] = [], mode: str = "play", **kwargs):
+    def __init__(self, master, width=200, height=200, corner_radius=None, border_width=None, bg_color="transparent", fg_color=None, border_color=None, background_corner_colors=None, overwrite_preferred_drawing_method=None, Name: str = "", Answers: list[str] = [], mode: str = "play", path:str = "", **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
         self.Name = Name
         self.Answers = []  # Initialize the Answers list
+        self.mode = mode
         self.NameEntry = ctk.CTkEntry(self, placeholder_text=self.Name)
         self.NameEntry.bind("<Return>", self.ChangeName)  # Bind Enter key to ChangeName
         self.NameEntry.place(relx=0, rely=0.5, anchor="w")
         for item in Answers:
-            answer = Answer(self, Answer=item)
+            answer = Answer(self, Answer=item, mode=self.mode)
             self.Answers.append(answer)
+        
+        self.answer_frame = ctk.CTkFrame(self)
+        self.answer_frame.place(relx=0.5, rely=0.5, anchor="center")
+        self.add_answer_button = ctk.CTkButton(self, text="Add Answer", command=self.add_answer)
+        self.add_answer_button.place(relx=1, rely=0.5, anchor="e")
 
     def ChangeName(self, event=None):
         new_name = self.NameEntry.get()
@@ -56,3 +77,12 @@ class Question(ctk.CTkFrame):
         self.NameEntry.configure(placeholder_text=new_name)
         self.NameEntry.delete(0, 'end')  # Clear the entry after setting the new name
         self.master.focus()  # Remove focus from the entry
+
+    def add_answer(self):
+        dialog = InputDialog(title="Answer", Buttontext="Confirm", PlaceholderInput="Enter an answer")
+        self.wait_window(dialog)
+        result = dialog.get_result()
+        if result:
+            answer = Answer(self.answer_frame, Answer=result, mode=self.mode)
+            answer.pack()
+            self.Answers.append(answer)

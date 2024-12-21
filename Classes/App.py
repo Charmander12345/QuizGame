@@ -59,31 +59,49 @@ class Mariechen(ctk.CTk):
         self.addQuestionButton.place(relx=1,rely=0,anchor="ne")
         self.LeaveEditorButton = ctk.CTkButton(self.QuizEditor,text="Leave Quiz editor",cursor="hand2",command=self.LeaveEditor)
         self.LeaveEditorButton.place(relx=0,rely=0,anchor="nw")
+        self.SaveQuizButton = ctk.CTkButton(self.QuizEditor,text="Save Quiz",cursor="hand2",command=lambda: self.SaveQuiz(quiz=self.quiz,defaultfile=self.quiz.path))
+        self.SaveQuizButton.place(relx=1,rely=1,anchor="se")
         
 
     def SaveINIValues(self):
         self.datahandler.SaveINI()
         self.destroy()
 
-    def SaveQuiz(self,quiz:Extras.Quiz,defaultfile:str = ""):
+    def SaveQuiz(self, quiz: Extras.Quiz, defaultfile: str = ""):
         if os.path.exists(quiz.path):
             if quiz:
-                self.datahandler.saveQuiz(quiz,quiz.path)
+                self.datahandler.saveQuiz(quiz, quiz.path)
+                CTkMessagebox(title="Success", message="Quiz saved successfully!", icon="check")
         else:
             if quiz:
                 path = filedialog.asksaveasfilename(
-                    initialfile= defaultfile + ".pkl",
+                    initialfile=defaultfile + ".pkl",
                     defaultextension=".pkl",
                     title="Speicherort wählen"
                 )
                 if path:
-                    self.datahandler.saveQuiz(quiz,path)
+                    self.datahandler.saveQuiz(quiz, path)
+                    self.quiz.path = path
+                    CTkMessagebox(title="Success", message="Quiz saved successfully!", icon="check")
     
     def LoadQuiz(self):
         path = filedialog.askopenfilename()
         if path:
-            with open(path,"rb"):
-                self.quiz = self.datahandler.getQuiz(path)
+            self.quiz = self.datahandler.getQuiz(path)
+            self.quiz.path = path
+            self.startupscreen.pack_forget()
+            self.QuizEditor.pack(fill="both", expand=True)
+            window_position.center_window(self, 900, 450)
+            self.editor = True
+            self.bind_all("<Escape>", self.LeaveEditor)
+            self.displayQuiz()
+
+    def displayQuiz(self):
+        for question_name, answers in self.quiz.Questions.items():
+            new_question = Extras.Question(self.QuizEditor, height=100, Name=question_name, Answers=answers, mode="edit")
+            new_question.pack(fill="x", expand=True)
+            self.questions[question_name] = answers
+            self.questionsRef.append(new_question)
 
     def showNameEntry(self,event = None):
         if self.ButtonsFrame.winfo_viewable():
@@ -113,7 +131,7 @@ class Mariechen(ctk.CTk):
             result = Dialog.get_result()
             if result is not None and result not in self.questions:
                 if self.editor:
-                    new_question = Extras.Question(self.QuizEditor, height=100,Name=result)
+                    new_question = Extras.Question(self.QuizEditor, height=100, Name=result, mode="edit")
                     new_question.pack(fill="x", expand=True)
                     self.questions[result] = []
                     self.questionsRef.append(new_question)
